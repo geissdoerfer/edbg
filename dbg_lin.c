@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -73,31 +74,36 @@ int dbg_enumerate(debugger_t *debuggers, int size)
 
   udev_list_entry_foreach(dev_list_entry, devices)
   {
+
     const char *path;
 
     path = udev_list_entry_get_name(dev_list_entry);
     dev = udev_device_new_from_syspath(udev, path);
 
     parent = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
-    check(parent, "unable to find parent usb device");
-
-    if (DBG_VID == strtol(udev_device_get_sysattr_value(parent, "idVendor"), NULL, 16) &&
-        DBG_PID == strtol(udev_device_get_sysattr_value(parent, "idProduct"), NULL, 16) &&
-        rsize < size)
+    if(parent)
     {
-      const char *serial = udev_device_get_sysattr_value(parent, "serial");
-      const char *manufacturer = udev_device_get_sysattr_value(parent, "manufacturer");
-      const char *product = udev_device_get_sysattr_value(parent, "product");
+      check(parent, "unable to find parent usb device");
 
-      debuggers[rsize].path = strdup(udev_device_get_devnode(dev));
-      debuggers[rsize].serial = serial ? strdup(serial) : "<unknown>";
-      debuggers[rsize].manufacturer = manufacturer ? strdup(manufacturer) : "<unknown>";
-      debuggers[rsize].product = product ? strdup(product) : "<unknown>";
+      if (DBG_VID == strtol(udev_device_get_sysattr_value(parent, "idVendor"), NULL, 16) &&
+          DBG_PID == strtol(udev_device_get_sysattr_value(parent, "idProduct"), NULL, 16) &&
+          rsize < size)
+      {
+        const char *serial = udev_device_get_sysattr_value(parent, "serial");
+        const char *manufacturer = udev_device_get_sysattr_value(parent, "manufacturer");
+        const char *product = udev_device_get_sysattr_value(parent, "product");
 
-      rsize++;
+        debuggers[rsize].path = strdup(udev_device_get_devnode(dev));
+        debuggers[rsize].serial = serial ? strdup(serial) : "<unknown>";
+        debuggers[rsize].manufacturer = manufacturer ? strdup(manufacturer) : "<unknown>";
+        debuggers[rsize].product = product ? strdup(product) : "<unknown>";
+
+        rsize++;
+      }
+
+
+      udev_device_unref(parent);
     }
-
-    udev_device_unref(parent);
   }
 
   udev_enumerate_unref(enumerate);
